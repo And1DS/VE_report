@@ -1,5 +1,5 @@
 
-import os
+import os, sys
 import pandas as pd
 import xlsxwriter
 
@@ -160,22 +160,45 @@ def csv_to_xlsx_with_chart(csv_files, output_filename, days=14, lcb_treshold=0.3
     writer.close()
     print(f"{Colors.BLUE}f{Colors.GREEN}o{Colors.RED}u{Colors.YELLOW}n{Colors.BLUE}d{Colors.GREEN} i{Colors.RED}t!{Colors.RESET}")
 
+
+def get_working_directory():
+    # Check if a command-line argument is provided and change current working directory if so.
+    if len(sys.argv) < 2:
+        print('')
+        print("No relative path provided. Using current working directory.")
+        print("You can provide a relative path as an argument, containing a subdirectory containing exported report files.")
+        print("Usage: python create_report.py <relative_path>")
+        print('')
+    else:
+        relative_path = sys.argv[1]
+        new_working_directory = os.path.abspath(relative_path)
+        os.chdir(new_working_directory)
+        print("Changed working directory to:", os.getcwd())
+
+
+    current_directory = os.getcwd()
+    subdirectories = list(reversed(get_subdirectories(current_directory)))
+    default_subdirectory = "."
+    if subdirectories:
+        default_subdirectory = subdirectories[0]
+    input_directory = input(f"Enter the directory containing your report files: [{default_subdirectory}] ").strip()
+    print('')
+    if not input_directory:
+        input_directory = default_subdirectory
+    return input_directory
+
 if __name__ == "__main__":
+
     days = 14
     lcb_treshold = 0.3
     min_dollar_amount = 5000
 
     print("Welcome to the VE report creator!")
     print('---------------------------------')
-    current_directory = os.getcwd()
-    subdirectories = list(reversed(get_subdirectories(current_directory)))
-    default_subdirectory = "."
-    if subdirectories:
-        default_subdirectory = subdirectories[0]
-    input_directory = input(f"Enter the directory containing your files: [{default_subdirectory}] ").strip()
-    print('')
-    if not input_directory:
-        input_directory = default_subdirectory
+
+    input_directory = get_working_directory()
+    
+    
     file_format = input("What format are the files in? Enter 'csv' or 'txt': ").strip().lower()
     if file_format not in ['csv', 'txt']:
         file_format = 'txt'
