@@ -73,9 +73,9 @@ def csv_to_xlsx_with_chart(csv_files, output_filename, days=14, lcb_treshold=0.3
             df = df.sort_values(by=df.columns[0])
 
         if sheet_name == 'query_insights':
-            if 'revenue_after_multiplier' in df.columns:
+            if 'revenue_increase_after_multiplier' in df.columns:
                 col_name = 'annualized uplift after multiplier'
-                df[col_name] = ((df['revenue_after_multiplier'] / days) * 365).astype(int)
+                df[col_name] = ((df['revenue_increase_after_multiplier'] / days) * 365).astype(int)
             # Get values from column 'C' where 'Q' < 'P' and 'AG' >= 10000
             
             rerank_candidates_list = df.loc[(df['conversion_rate'] < df['ctr']) & (df[col_name] > min_dollar_amount), 'query_fingerprint'].tolist()
