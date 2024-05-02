@@ -1,4 +1,14 @@
 
+## This script is used to create an excel report from exported CSV files from VE admin panel.
+## Usage: python create_report.py <relative_path>
+##
+## The script will ask for the sub directory containing the exported CSV files and parameters to use.
+##
+## Author: Andreas De Stefani, Algolia Solutions Engineering
+## Date: 2024-05
+## 
+
+
 import os, sys
 import pandas as pd
 import xlsxwriter
@@ -181,11 +191,19 @@ def get_working_directory():
     default_subdirectory = "."
     if subdirectories:
         default_subdirectory = subdirectories[0]
-    input_directory = input(f"Enter the directory containing your report files: [{default_subdirectory}] ").strip()
+    #display the subdirectories
+    print('')
+    print("Subdirectories in the current directory:")
+    for i, subdirectory in enumerate(subdirectories, 1):
+        print(f">> {subdirectory}")
+
+    input_directory = input(f"Enter the sub-directory containing your report files: [{default_subdirectory}] ").strip()
     print('')
     if not input_directory:
         input_directory = default_subdirectory
     return input_directory
+
+
 
 if __name__ == "__main__":
 
@@ -198,7 +216,6 @@ if __name__ == "__main__":
 
     input_directory = get_working_directory()
     
-    
     file_format = input("What format are the files in? Enter 'csv' or 'txt': ").strip().lower()
     if file_format not in ['csv', 'txt']:
         file_format = 'txt'
@@ -206,6 +223,12 @@ if __name__ == "__main__":
         rename_txt_to_csv(input_directory)
         print("Renamed all .txt files to .csv.")
     csv_files = [os.path.join(input_directory, f) for f in os.listdir(input_directory) if f.endswith('.csv')]
+    if len(csv_files) < 5:
+        #ask if there are files missing and if they want to abort
+        print("There are less than 5 CSV files in the specified directory.")
+        print("Please make sure you have all the necessary files.")
+        print("If you are missing files, please add them to the directory and run the script again.")
+        print("")
     
     print('')
     input_days = input("How many days of data are you looking at? [14] ")
@@ -250,9 +273,6 @@ if __name__ == "__main__":
     else:
         csv_to_xlsx_with_chart(csv_files, output_filename, days, lcb_treshold, min_dollar_amount)
         print(f"Created {Colors.GREEN}{output_filename}{Colors.RESET} with sheets and charts where applicable.")
-
-
-
     print('')
     print('')
 
