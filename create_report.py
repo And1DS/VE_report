@@ -1,4 +1,34 @@
 
+## This script is used to create an excel report from exported CSV files from VE admin panel.
+## Usage: python create_report.py <relative_path>
+##
+## The script will ask for the sub directory containing the exported CSV files and parameters to use.
+##
+## Author: Andreas De Stefani, Algolia Solutions Engineering
+## Date: 2024-05
+## 
+
+
+
+
+# Constants
+HEADER_H = 30 # Height of the header row
+FINGERPRINT_W = 30 # Width of the 'query_fingerprint' column
+DATE_W = 20
+QUERY_W = 30
+FILTER_W = 30
+
+STANDARD_BG_COLOR = '#FFFFFF'  # Default background color for headers
+STANDARD_COL_WIDTH = 15  # Default column width
+
+# Dictionary mapping headers to background colors
+header_info = {
+    'ID': {'color:':"#CC0000", 'width':20},  # Red
+    'ctr': {'color':'#00FF00', 'width':10}  # Green
+}
+
+
+
 import os, sys
 import pandas as pd
 import xlsxwriter
@@ -49,9 +79,10 @@ def csv_to_xlsx_with_chart(csv_files, output_filename, days=14, lcb_treshold=0.3
     """
     writer = pd.ExcelWriter(output_filename, engine='xlsxwriter')
     workbook = writer.book
-    header_format = workbook.add_format({'bold': True, 'bg_color': '#D7E4BC'})
+    header_format = workbook.add_format({'bold': True, 'bg_color': '#D7E4BC', 'text_wrap': True, 'valign': 'bottom'})
     format_light_red = workbook.add_format({'bg_color': '#FFC7CE'})  # Format for conditional formatting
     format_light_green = workbook.add_format({'bg_color': '#a4cc9f'})
+    int_format = workbook.add_format({'num_format': '0'})
 
     rerank_candidates_list = []
     rerank_candidates_df = None
@@ -91,6 +122,18 @@ def csv_to_xlsx_with_chart(csv_files, output_filename, days=14, lcb_treshold=0.3
             
         
         df.to_excel(writer, sheet_name=sheet_name, index=False)
+        # Apply the format to the headers with specific background colors
+        for col_num, header in enumerate(df.columns.values):
+            h_info = header_info.get(header)
+            if h_info != None:
+                header_format.set_bg_color(h_info.get('color', '#FFFFFF'))  # Set background color
+            else:
+                h_info = {'color': STANDARD_BG_COLOR, 'width': STANDARD_COL_WIDTH}
+            
+            # Write the header with specific format
+            worksheet = writer.sheets[sheet_name]
+            worksheet.write(0, col_num, header, header_format)
+            worksheet.set_column(col_num, col_num, h_info.get('width', 15))  # Set column width
 
     print('')
     print(f"{Colors.RED}looking for value ... {Colors.RESET}", end='')
@@ -113,10 +156,21 @@ def csv_to_xlsx_with_chart(csv_files, output_filename, days=14, lcb_treshold=0.3
 
     summary_df = pd.DataFrame(summary_data)
     summary_df.to_excel(writer, sheet_name='Summary', index=False)
+
+
+    for ws in writer.sheets:
+        worksheet = writer.sheets[ws]
+        #set row height for header
+        worksheet.set_row(0, HEADER_H)
+        #freeze the first row
+        worksheet.freeze_panes(1, 0)
+
+
     
     # Add a chart to the position_bias sheet if it exists
     if 'position_bias' in writer.sheets:
         worksheet = writer.sheets['position_bias']
+
         max_row = len(df) + 1
         chart = workbook.add_chart({'type': 'column'})
         chart.add_series({
@@ -137,11 +191,20 @@ def csv_to_xlsx_with_chart(csv_files, output_filename, days=14, lcb_treshold=0.3
             'major_unit': 0.1,  # Set the interval between major ticks on the y-axis
         })
         chart.set_title({'name': 'Position Bias'})
-        worksheet.insert_chart('I2', chart)
+        worksheet.insert_chart('I15', chart)
+
+    
 
     if 'query_insights' in writer.sheets:
                 # Add conditional formatting to "query_insights" sheet specifically
         qis = writer.sheets['query_insights']
+
+        #set column format of query_fingerprint
+        qis.set_column('C:C', FINGERPRINT_W, int_format)
+        qis.set_column('A:A', DATE_W)
+        qis.set_column('B:B', DATE_W)
+
+
         # Apply conditional formatting based on values in column P and O
         qis.conditional_format(1, 16, len(df), 16, {
             'type': 'formula',
@@ -155,6 +218,19 @@ def csv_to_xlsx_with_chart(csv_files, output_filename, days=14, lcb_treshold=0.3
             'value': min_dollar_amount,
             'format': format_light_green
         })
+
+    if 'all_queries_top50KByRank' in writer.sheets:
+        aq = writer.sheets['all_queries_top50KByRank']
+        aq.set_column('C:C', FINGERPRINT_W, int_format)
+        
+
+    if 'query_reranking' in writer.sheets:
+        qr = writer.sheets['query_reranking']
+        qr.set_column('A:A', FINGERPRINT_W, int_format)
+    
+    if 'rerank_candidates' in writer.sheets:
+        qrc = writer.sheets['rerank_candidates']
+        qrc.set_column('A:A', FINGERPRINT_W, int_format)
 
         
     writer.close()
@@ -181,11 +257,19 @@ def get_working_directory():
     default_subdirectory = "."
     if subdirectories:
         default_subdirectory = subdirectories[0]
-    input_directory = input(f"Enter the directory containing your report files: [{default_subdirectory}] ").strip()
+    #display the subdirectories
+    print('')
+    print("Subdirectories in the current directory:")
+    for i, subdirectory in enumerate(subdirectories, 1):
+        print(f">> {subdirectory}")
+
+    input_directory = input(f"Enter the sub-directory containing your report files: [{default_subdirectory}] ").strip()
     print('')
     if not input_directory:
         input_directory = default_subdirectory
     return input_directory
+
+
 
 if __name__ == "__main__":
 
@@ -198,7 +282,6 @@ if __name__ == "__main__":
 
     input_directory = get_working_directory()
     
-    
     file_format = input("What format are the files in? Enter 'csv' or 'txt': ").strip().lower()
     if file_format not in ['csv', 'txt']:
         file_format = 'txt'
@@ -206,6 +289,12 @@ if __name__ == "__main__":
         rename_txt_to_csv(input_directory)
         print("Renamed all .txt files to .csv.")
     csv_files = [os.path.join(input_directory, f) for f in os.listdir(input_directory) if f.endswith('.csv')]
+    if len(csv_files) < 5:
+        #ask if there are files missing and if they want to abort
+        print("There are less than 5 CSV files in the specified directory.")
+        print("Please make sure you have all the necessary files.")
+        print("If you are missing files, please add them to the directory and run the script again.")
+        print("")
     
     print('')
     input_days = input("How many days of data are you looking at? [14] ")
@@ -250,9 +339,6 @@ if __name__ == "__main__":
     else:
         csv_to_xlsx_with_chart(csv_files, output_filename, days, lcb_treshold, min_dollar_amount)
         print(f"Created {Colors.GREEN}{output_filename}{Colors.RESET} with sheets and charts where applicable.")
-
-
-
     print('')
     print('')
 
