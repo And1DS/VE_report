@@ -1,3 +1,13 @@
+## This script allows to send events to an algolia index to enable DRR.
+## It uses the Algolia Insights API.
+##
+## The script will ask for the Algolia App ID and Admin API Key, the index name, a user token, and a search query.
+##
+## Author: Andreas De Stefani, Algolia Solutions Engineering
+## Date: 2024-05
+## 
+
+
 from algoliasearch.search_client import SearchClient
 from algoliasearch.insights_client import InsightsClient
 import random
