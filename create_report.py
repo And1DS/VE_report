@@ -98,7 +98,7 @@ def csv_to_xlsx_with_chart(csv_files, output_filename, days=14, lcb_treshold=0.3
         sheet_name = os.path.splitext(os.path.basename(csv_file))[0]
         print(f"reading sheet {Colors.GREEN}{sheet_name}{Colors.RESET}")
         if '_' in sheet_name:
-            sheet_name = '_'.join(sheet_name.split('_')[1:])
+            sheet_name = '_'.join(sheet_name.split('_')[1:])[:30]
         df = pd.read_csv(csv_file)
         if sheet_name == 'position_bias':
             df = df.sort_values(by=df.columns[0])
@@ -142,9 +142,13 @@ def csv_to_xlsx_with_chart(csv_files, output_filename, days=14, lcb_treshold=0.3
     
     result_groups = rerank_candidates_df.groupby('query_fingerprint').filter(lambda x: (x['lcb'] > lcb_treshold).sum() >= 3)
     # Apply the function to each group and concatenate the results
-    result_df = pd.concat([process_group(group, lcb_treshold) for name, group in result_groups.groupby('query_fingerprint')])
-    total_candidate_uplift = result_df['annualized_uplift'].sum()
-    result_df.to_excel(writer, sheet_name='rerank_candidates', index=False)
+    try:
+        result_df = pd.concat([process_group(group, lcb_treshold) for name, group in result_groups.groupby('query_fingerprint')])
+        total_candidate_uplift = result_df['annualized_uplift'].sum()
+        result_df.to_excel(writer, sheet_name='rerank_candidates', index=False)
+    except:
+        print(f"{Colors.RED}no value found{Colors.RESET}")
+    
 
     #add a new sheet for Summary as first sheet
     summary_data = {
